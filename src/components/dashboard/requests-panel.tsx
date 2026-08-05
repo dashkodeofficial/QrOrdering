@@ -33,12 +33,32 @@ export function RequestsPanel() {
   const [open, setOpen] = useState(false);
   const [resolving, setResolving] = useState<string | null>(null);
   const knownIds = useRef<Set<string>>(new Set());
+  const tableNames = useRef<Map<string, string>>(new Map());
 
   const loadRequests = useCallback(async () => {
+    const supabase = createClient();
+
+    // Load all table names for the cache (used when realtime INSERT
+    // payloads arrive without joined table data)
+    const { data: tablesData } = await supabase
+      .from("tables")
+      .select("id, name");
+    if (tablesData) {
+      for (const t of tablesData) {
+        tableNames.current.set(t.id, t.name);
+      }
+    }
+
     const res = await getPendingRequests();
     if (res.ok) {
       setRequests(res.data);
       knownIds.current = new Set(res.data.map((r) => r.id));
+      // Cache table names from the joined result
+      for (const r of res.data) {
+        if (r.table_name && r.table_id) {
+          tableNames.current.set(r.table_id, r.table_name);
+        }
+      }
     }
   }, []);
 
@@ -51,21 +71,42 @@ export function RequestsPanel() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "waiter_requests" },
-        (payload) => {
+        async (payload) => {
           const newReq = payload.new as PendingRequest;
           if (knownIds.current.has(newReq.id)) return;
           knownIds.current.add(newReq.id);
 
           playRequestSound();
 
+          // Realtime INSERT payloads don't include joined relations.
+          // Resolve table name from our cache, or fetch it on demand.
+          let tableName = newReq.table_name ?? null;
+          if (!tableName && newReq.table_id) {
+            tableName = tableNames.current.get(newReq.table_id) ?? null;
+            if (!tableName) {
+              const supabase = createClient();
+              const { data } = await supabase
+                .from("tables")
+                .select("name")
+                .eq("id", newReq.table_id)
+                .maybeSingle();
+              if (data?.name) {
+                const name: string = data.name;
+                tableName = name;
+                if (newReq.table_id) {
+                  tableNames.current.set(newReq.table_id, name);
+                }
+              }
+            }
+          }
+          const enriched = { ...newReq, table_name: tableName };
+
           setRequests((prev) => {
-            return [newReq, ...prev.filter((r) => r.id !== newReq.id)];
+            return [enriched, ...prev.filter((r) => r.id !== newReq.id)];
           });
 
           toast.info(`New request: ${WAITER_REQUEST_LABEL[newReq.type] ?? newReq.type}`, {
-            description: newReq.table_name
-              ? `Table ${newReq.table_name}`
-              : "Unknown table",
+            description: tableName ? `Table ${tableName}` : "Unknown table",
           });
         },
       )
@@ -111,7 +152,7 @@ export function RequestsPanel() {
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "fixed right-4 top-20 z-50 flex items-center gap-2 rounded-full bg-primary px-3 py-2.5 text-primary-foreground shadow-lg transition-all hover:shadow-xl",
+          "fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-primary px-3 py-2.5 text-primary-foreground shadow-lg transition-all hover:shadow-xl",
           open && "opacity-0 pointer-events-none",
         )}
       >
@@ -181,7 +222,7 @@ export function RequestsPanel() {
                         {WAITER_REQUEST_LABEL[req.type] ?? req.type}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {req.table_name ? `Table ${req.table_name}` : "Unknown table"}
+                        {req.table_name ? `${req.table_name}` : "Unknown table"}
                         {" · "}
                         {timeAgo(req.created_at)}
                       </p>

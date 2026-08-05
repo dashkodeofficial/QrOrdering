@@ -15,7 +15,6 @@ const ROUTE_CAPABILITIES: { prefix: string; cap: Capability }[] = [
   { prefix: "/admin/orders", cap: "orders.manage" },
   { prefix: "/admin/menu", cap: "menu.manage" },
   { prefix: "/admin/tables", cap: "tables.manage" },
-  { prefix: "/admin/staff", cap: "staff.manage" },
   { prefix: "/admin/settings", cap: "settings.manage" },
   { prefix: "/admin/reports", cap: "reports.view" },
   { prefix: "/admin", cap: "orders.manage" },
@@ -56,7 +55,7 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const role = (staff.role === "MANAGER" ? "MANAGER" : "ADMIN") as StaffRole;
+  const role = "ADMIN" as StaffRole;
 
   // Role-based route guard: if the current path requires a capability the
   // staff role does not have, redirect to their role home.

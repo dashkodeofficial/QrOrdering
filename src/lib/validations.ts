@@ -64,16 +64,6 @@ export const placeOrderSchema = z.object({
 });
 
 /* ---------------------------------------------------------------------------
- * Staff (admin manages)
- * ------------------------------------------------------------------------ */
-export const staffSchema = z.object({
-  full_name: z.string().trim().min(1, "Full name is required").max(80),
-  email: z.string().email("Valid email required"),
-  password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
-  role: z.enum(["ADMIN", "MANAGER"]),
-});
-
-/* ---------------------------------------------------------------------------
  * Feedback (customer, gated on served+paid)
  * ------------------------------------------------------------------------ */
 export const feedbackSchema = z.object({
@@ -109,7 +99,6 @@ export type CategoryInput = z.infer<typeof categorySchema>;
 export type MenuItemInput = z.infer<typeof menuItemSchema>;
 export type TableInput = z.infer<typeof tableSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
-export type StaffInput = z.infer<typeof staffSchema>;
 export type FeedbackInput = z.infer<typeof feedbackSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SettingsInput = z.infer<typeof settingsSchema>;

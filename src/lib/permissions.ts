@@ -5,7 +5,6 @@ import type { StaffRole } from "./types/db";
  * conditional UI stay in sync with the spec.
  *
  * ADMIN     : everything
- * MANAGER   : menu, orders, tables, reports (not owner settings)
  */
 export type Capability =
   | "menu.manage"
@@ -14,7 +13,6 @@ export type Capability =
   | "tables.view"
   | "reports.view"
   | "activity.view"
-  | "staff.manage"
   | "tables.manage"
   | "settings.manage"
   | "spin.manage"
@@ -24,11 +22,7 @@ const MATRIX: Record<StaffRole, Capability[]> = {
   ADMIN: [
     "menu.manage", "menu.view", "orders.manage", "tables.view", "tables.manage",
     "reports.view", "activity.view",
-    "staff.manage", "settings.manage", "spin.manage", "spin.play",
-  ],
-  MANAGER: [
-    "menu.manage", "menu.view", "orders.manage", "tables.view",
-    "reports.view", "activity.view", "spin.manage", "spin.play",
+    "settings.manage", "spin.manage", "spin.play",
   ],
 };
 
@@ -39,11 +33,9 @@ export function can(role: StaffRole | null | undefined, cap: Capability): boolea
 
 export const ROLE_LABEL: Record<StaffRole, string> = {
   ADMIN: "Administrator",
-  MANAGER: "Manager",
 };
 
 /** Default landing route for each role after login. */
 export const ROLE_HOME: Record<StaffRole, string> = {
   ADMIN: "/admin",
-  MANAGER: "/admin",
 };

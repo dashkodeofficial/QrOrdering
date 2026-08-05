@@ -4,7 +4,7 @@
  * the database, Server Actions, and the UI.
  */
 
-export type StaffRole = "ADMIN" | "MANAGER";
+export type StaffRole = "ADMIN";
 
 export type TableStatus =
   | "AVAILABLE"
@@ -106,6 +106,7 @@ export interface Staff {
   active: boolean;
   created_at: string;
 }
+
 
 export interface WaiterRequest {
   id: string;

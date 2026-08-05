@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   UtensilsCrossed,
   LayoutGrid,
-  Users,
   ShoppingBag,
   BarChart3,
   Settings,
@@ -49,7 +48,6 @@ const NAV_GROUPS: { label: string; items: NavItemDef[] }[] = [
       { href: "/admin/orders", label: "Orders", icon: ShoppingBag, cap: "orders.manage" as const },
       { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed, cap: "menu.manage" as const },
       { href: "/admin/tables", label: "Tables", icon: LayoutGrid, cap: "tables.manage" as const },
-      { href: "/admin/staff", label: "Staff", icon: Users, cap: "staff.manage" as const },
     ],
   },
   {

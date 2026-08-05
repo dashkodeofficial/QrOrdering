@@ -8,6 +8,7 @@ import {
   Printer,
   Trash2,
   QrCode,
+  CheckCircle2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { createTable, deleteTable } from "@/actions/tables";
+import { createTable, deleteTable, updateTableStatus } from "@/actions/tables";
 import { buildQrUrl } from "@/lib/qr-url";
 import QRCode from "qrcode";
 import type { RestaurantTable, QrToken } from "@/lib/types/db";
@@ -278,6 +279,28 @@ export default function AdminTablesPage() {
               >
                 <Printer className="size-3.5 mr-1" /> Print
               </Button>
+              {(table.status === "OCCUPIED" || table.status === "BILL_REQUESTED") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-green-600 hover:text-green-700"
+                  onClick={() =>
+                    askConfirm(
+                      "Mark Available",
+                      `Mark "${table.name}" as available? This will close the active session.`,
+                      async () => {
+                        const res = await updateTableStatus(table.id, "AVAILABLE");
+                        if (res.ok) {
+                          toast.success("Table is now available");
+                          refresh();
+                        } else toast.error(res.error);
+                      },
+                    )
+                  }
+                >
+                  <CheckCircle2 className="size-3.5 mr-1" /> Available
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

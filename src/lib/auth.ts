@@ -35,7 +35,7 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
     id: staff.id,
     userId: user.id,
     fullName: staff.full_name,
-    role: (staff.role === "MANAGER" ? "MANAGER" : "ADMIN") as StaffRole,
+    role: "ADMIN" as StaffRole,
     active: staff.active,
   };
 }
