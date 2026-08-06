@@ -10,6 +10,9 @@ import {
   Star,
   Clock,
   Calendar,
+  ArrowUpRight,
+  UtensilsCrossed,
+  PieChart as PieIcon,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { getReports } from "@/actions/reports";
@@ -198,9 +201,15 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-        <div className="h-96 animate-pulse rounded-xl bg-card" />
+        <div className="h-20 animate-pulse rounded-xl bg-card border border-border/50" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-card border border-border/50" />
+          ))}
+        </div>
+        <div className="h-96 animate-pulse rounded-xl bg-card border border-border/50" />
       </div>
     );
   }
@@ -209,8 +218,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-          <BarChart3 className="size-5 text-primary" />
+        <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
+          <BarChart3 className="size-6 text-primary" />
         </div>
         <div>
           <h1 className="text-xl font-bold tracking-tight">Reports</h1>
@@ -219,15 +228,15 @@ export default function ReportsPage() {
       </div>
 
       {/* Date filter bar */}
-      <Card className="border-border/50">
-        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-end sm:justify-between">
+      <Card className="border-border/50 shadow-sm rounded-xl">
+        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {PRESETS.map((p) => (
               <Button
                 key={p.label}
                 variant={activePreset === p.label ? "default" : "outline"}
                 size="sm"
-                className="rounded-lg"
+                className="h-9 rounded-lg"
                 onClick={() => handlePreset(p.label, p.days)}
               >
                 {p.label}
@@ -243,7 +252,7 @@ export default function ReportsPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => handleDateChange("start", e.target.value)}
-                className="w-auto rounded-lg"
+                className="w-auto rounded-lg h-9"
               />
             </div>
             <div className="space-y-1">
@@ -254,10 +263,10 @@ export default function ReportsPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => handleDateChange("end", e.target.value)}
-                className="w-auto rounded-lg"
+                className="w-auto rounded-lg h-9"
               />
             </div>
-            <Button variant="outline" className="rounded-lg" onClick={downloadExcel}>
+            <Button variant="outline" className="rounded-lg h-9" onClick={downloadExcel}>
               <Download className="size-4 mr-1.5" /> Excel
             </Button>
           </div>
@@ -275,34 +284,39 @@ export default function ReportsPage() {
               value={<Price cents={revenueTotal} className="text-2xl font-bold" />}
               icon={TrendingUp}
               color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+              ring="ring-emerald-100 dark:ring-emerald-900"
             />
             <KpiCard
               title="Orders"
               value={<span className="text-2xl font-bold">{ordersTotal}</span>}
               icon={ShoppingBag}
               color="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
+              ring="ring-blue-100 dark:ring-blue-900"
             />
             <KpiCard
               title="Avg. Order"
               value={<Price cents={avgOrder} className="text-2xl font-bold" />}
               icon={Clock}
               color="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+              ring="ring-amber-100 dark:ring-amber-900"
             />
           </div>
 
           <Tabs defaultValue="sales">
-            <TabsList>
-              <TabsTrigger value="sales">Sales</TabsTrigger>
-              <TabsTrigger value="products">Products</TabsTrigger>
-              <TabsTrigger value="categories">Categories</TabsTrigger>
-              <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsList className="h-10">
+              <TabsTrigger value="sales" className="text-sm">Sales</TabsTrigger>
+              <TabsTrigger value="products" className="text-sm">Products</TabsTrigger>
+              <TabsTrigger value="categories" className="text-sm">Categories</TabsTrigger>
+              <TabsTrigger value="customers" className="text-sm">Customers</TabsTrigger>
             </TabsList>
 
             {/* Sales tab */}
             <TabsContent value="sales" className="space-y-4">
-              <Card>
+              <Card className="shadow-sm rounded-xl">
                 <CardHeader>
-                  <CardTitle className="text-base">Revenue Trend</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="size-4 text-muted-foreground" /> Revenue Trend
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-72">
@@ -321,9 +335,11 @@ export default function ReportsPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="shadow-sm rounded-xl">
                 <CardHeader>
-                  <CardTitle className="text-base">Orders by Day</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="size-4 text-muted-foreground" /> Orders by Day
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-72">
@@ -345,9 +361,11 @@ export default function ReportsPage() {
 
             {/* Products tab */}
             <TabsContent value="products" className="space-y-4">
-              <Card>
+              <Card className="shadow-sm rounded-xl">
                 <CardHeader>
-                  <CardTitle className="text-base">Top Products by Revenue</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShoppingBag className="size-4 text-muted-foreground" /> Top Products by Revenue
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
@@ -366,26 +384,33 @@ export default function ReportsPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="shadow-sm rounded-xl">
                 <CardHeader>
-                  <CardTitle className="text-base">Product Details</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <UtensilsCrossed className="size-4 text-muted-foreground" /> Product Details
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="border-b bg-muted/30">
                         <tr>
-                          <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground">Product</th>
-                          <th className="px-4 py-2.5 text-right font-semibold text-muted-foreground">Qty Sold</th>
-                          <th className="px-4 py-2.5 text-right font-semibold text-muted-foreground">Revenue</th>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Product</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Qty Sold</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Revenue</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/50">
-                        {filteredData.products.slice(0, 15).map((p) => (
+                        {filteredData.products.slice(0, 15).map((p, i) => (
                           <tr key={p.name} className="hover:bg-muted/20 transition-colors">
-                            <td className="px-4 py-2.5 font-medium">{p.name}</td>
-                            <td className="px-4 py-2.5 text-right">{p.quantity}</td>
-                            <td className="px-4 py-2.5 text-right font-semibold"><Price cents={p.revenue_cents} /></td>
+                            <td className="px-4 py-3 font-medium">
+                              <span className="flex items-center gap-2">
+                                <span className="flex size-6 items-center justify-center rounded-md bg-muted text-xs font-bold text-muted-foreground">{i + 1}</span>
+                                {p.name}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">{p.quantity}</td>
+                            <td className="px-4 py-3 text-right font-semibold"><Price cents={p.revenue_cents} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -398,9 +423,11 @@ export default function ReportsPage() {
             {/* Categories tab */}
             <TabsContent value="categories" className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
+                <Card className="shadow-sm rounded-xl">
                   <CardHeader>
-                    <CardTitle className="text-base">Revenue Share</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <PieIcon className="size-4 text-muted-foreground" /> Revenue Share
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-72">
@@ -428,9 +455,11 @@ export default function ReportsPage() {
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm rounded-xl">
                   <CardHeader>
-                    <CardTitle className="text-base">Category Details</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <UtensilsCrossed className="size-4 text-muted-foreground" /> Category Details
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
@@ -466,12 +495,14 @@ export default function ReportsPage() {
                   value={<span className="text-2xl font-bold">{filteredData.insights.total_customers}</span>}
                   icon={Users}
                   color="bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400"
+                  ring="ring-purple-100 dark:ring-purple-900"
                 />
                 <KpiCard
                   title="Total Orders"
                   value={<span className="text-2xl font-bold">{filteredData.insights.total_orders}</span>}
                   icon={ShoppingBag}
                   color="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
+                  ring="ring-blue-100 dark:ring-blue-900"
                 />
                 <KpiCard
                   title="Avg Food Rating"
@@ -483,6 +514,7 @@ export default function ReportsPage() {
                   }
                   icon={Star}
                   color="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400"
+                  ring="ring-amber-100 dark:ring-amber-900"
                 />
                 <KpiCard
                   title="Avg Service Rating"
@@ -494,11 +526,14 @@ export default function ReportsPage() {
                   }
                   icon={Star}
                   color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  ring="ring-emerald-100 dark:ring-emerald-900"
                 />
               </div>
-              <Card>
+              <Card className="shadow-sm rounded-xl">
                 <CardHeader>
-                  <CardTitle className="text-base">Peak Hours</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Clock className="size-4 text-muted-foreground" /> Peak Hours
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-72">
@@ -530,22 +565,24 @@ function KpiCard({
   value,
   icon: Icon,
   color,
+  ring,
 }: {
   title: string;
   value: React.ReactNode;
   icon: React.ElementType;
   color: string;
+  ring?: string;
 }) {
   return (
-    <Card className="border-border/50">
+    <Card className={cn("border-border/50 shadow-sm rounded-xl", ring && `ring-1 ${ring}`)}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-muted-foreground">{title}</p>
-          <div className={cn("flex size-8 items-center justify-center rounded-lg", color)}>
+          <div className={cn("flex size-9 items-center justify-center rounded-lg", color)}>
             <Icon className="size-4" />
           </div>
         </div>
-        <div className="mt-2">{value}</div>
+        <div className="mt-2.5">{value}</div>
       </CardContent>
     </Card>
   );

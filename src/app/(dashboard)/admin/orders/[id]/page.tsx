@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -46,8 +46,10 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
   const [order, setOrder] = useState<AdminOrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const navigatingRef = useRef(false);
 
   const load = useCallback(async () => {
+    if (navigatingRef.current) return;
     const res = await getAdminOrderDetails(id);
     if (res.ok) {
       setOrder(res.data);
@@ -105,11 +107,13 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
 
   async function handleCancel() {
     setBusy("cancel");
+    navigatingRef.current = true;
     const res = await cancelOrder(id);
     if (res.ok) {
       toast.success("Order cancelled");
-      router.push("/admin/orders");
+      router.replace("/admin/orders");
     } else {
+      navigatingRef.current = false;
       toast.error(res.error);
     }
     setBusy(null);
@@ -117,11 +121,13 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
 
   async function handleMarkPaid() {
     setBusy("paid");
+    navigatingRef.current = true;
     const res = await markBillPaid(id);
     if (res.ok) {
       toast.success("Bill marked as paid. Table is now available.");
-      router.push("/admin/orders");
+      router.replace("/admin/orders");
     } else {
+      navigatingRef.current = false;
       toast.error(res.error);
     }
     setBusy(null);
@@ -198,7 +204,7 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
             Order #{order.id.slice(0, 8).toUpperCase()}
           </h1>
           <p className="text-xs text-muted-foreground">
-            {order.table_name ? `Table ${order.table_name}` : "Unknown table"} · {formatDate(order.created_at)}
+            {order.table_name ? `${order.table_name}` : order.order_type === "TAKEAWAY" ? "Takeaway" : "Unknown table"} · {formatDate(order.created_at)}
           </p>
         </div>
         <Badge
@@ -216,7 +222,7 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
               <p className="text-xs text-muted-foreground">Table</p>
-              <p className="font-bold text-sm">{order.table_name ?? "—"}</p>
+              <p className="font-bold text-sm">{order.table_name ?? (order.order_type === "TAKEAWAY" ? "Takeaway" : "—")}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Items</p>
@@ -350,18 +356,22 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
       </Card>
 
       {/* Action buttons */}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" className="flex-1" onClick={handlePrint}>
-          <Printer className="mr-2 size-4" /> Print
-        </Button>
-        <Button variant="outline" className="flex-1" onClick={handleDownload}>
-          <Download className="mr-2 size-4" /> Download
-        </Button>
+      <div className="flex flex-col gap-3 pt-2">
+        {/* Utility actions */}
+        <div className="flex items-center justify-center gap-3">
+          <Button variant="outline" className="h-10 min-w-[130px] rounded-lg" onClick={handlePrint}>
+            <Printer className="mr-2 size-4" /> Print
+          </Button>
+          <Button variant="outline" className="h-10 min-w-[130px] rounded-lg" onClick={handleDownload}>
+            <Download className="mr-2 size-4" /> Download
+          </Button>
+        </div>
+        {/* Order actions */}
         {isPlaced && (
-          <>
+          <div className="flex items-center justify-center gap-3">
             <Button
               variant="outline"
-              className="flex-1 text-destructive hover:text-destructive"
+              className="h-10 min-w-[150px] rounded-lg text-destructive hover:text-destructive hover:border-destructive/30"
               disabled={busy === "cancel"}
               onClick={handleCancel}
             >
@@ -374,7 +384,7 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
             </Button>
             <Button
               variant="default"
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              className="h-10 min-w-[150px] rounded-lg bg-green-600 shadow-sm hover:bg-green-700 hover:shadow-md transition-all"
               disabled={busy === "paid"}
               onClick={handleMarkPaid}
             >
@@ -385,7 +395,7 @@ export default function AdminOrderDetailPage({ params }: PageProps) {
               )}
               Mark as Paid
             </Button>
-          </>
+          </div>
         )}
       </div>
     </div>

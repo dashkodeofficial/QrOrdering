@@ -11,6 +11,7 @@ import {
   UtensilsCrossed,
   LayoutGrid,
   ShoppingBag,
+  History,
   BarChart3,
   Settings,
   Activity,
@@ -46,6 +47,7 @@ const NAV_GROUPS: { label: string; items: NavItemDef[] }[] = [
     label: "Management",
     items: [
       { href: "/admin/orders", label: "Orders", icon: ShoppingBag, cap: "orders.manage" as const },
+      { href: "/admin/order-history", label: "Order History", icon: History, cap: "orders.manage" as const },
       { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed, cap: "menu.manage" as const },
       { href: "/admin/tables", label: "Tables", icon: LayoutGrid, cap: "tables.manage" as const },
     ],

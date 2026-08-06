@@ -17,7 +17,13 @@ export type TableSessionStatus =
 
 export type OrderStatus =
   | "PLACED"
+  | "COMPLETED"
   | "CANCELLED";
+
+export type OrderType =
+  | "DINE_IN"
+  | "TAKEAWAY"
+  | "DELIVERY";
 
 export type WaiterRequestType =
   | "CALL_WAITER"
@@ -79,9 +85,10 @@ export interface TableSession {
 
 export interface Order {
   id: string;
-  table_id: string;
-  table_session_id: string;
+  table_id: string | null;
+  table_session_id: string | null;
   status: OrderStatus;
+  order_type: OrderType;
   total_cents: number;
   notes: string | null;
   created_at: string;

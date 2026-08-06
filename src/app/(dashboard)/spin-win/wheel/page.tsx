@@ -75,7 +75,16 @@ export default function SpinWheelPage() {
 
     if (rewards.length === 0) return;
 
-    const segmentAngle = (2 * Math.PI) / rewards.length;
+    // Probability-based segment angles
+    const totalProb = rewards.reduce((sum, r) => sum + r.probability, 0);
+    const angles = rewards.map((r) => (r.probability / totalProb) * 2 * Math.PI);
+    // Cumulative start angles (starting from 0)
+    const startAngles: number[] = [];
+    let cum = 0;
+    for (const a of angles) {
+      startAngles.push(cum);
+      cum += a;
+    }
 
     // Outer shadow
     ctx.save();
@@ -99,9 +108,9 @@ export default function SpinWheelPage() {
     ctx.fillStyle = ringGrad;
     ctx.fill();
 
-    // Decorative dots on outer ring
+    // Decorative dots on outer ring (at segment boundaries)
     for (let i = 0; i < rewards.length; i++) {
-      const angle = rotation + i * segmentAngle - Math.PI / 2;
+      const angle = rotation + startAngles[i] - Math.PI / 2;
       const dotX = center + Math.cos(angle) * (radius + 4);
       const dotY = center + Math.sin(angle) * (radius + 4);
       ctx.beginPath();
@@ -112,8 +121,8 @@ export default function SpinWheelPage() {
 
     // Segments with gradient fills
     for (let i = 0; i < rewards.length; i++) {
-      const startAngle = rotation + i * segmentAngle - Math.PI / 2;
-      const endAngle = startAngle + segmentAngle;
+      const segStart = rotation + startAngles[i] - Math.PI / 2;
+      const segEnd = segStart + angles[i];
       const color = WHEEL_COLORS[i % WHEEL_COLORS.length];
 
       // Gradient fill: lighter center → darker edge
@@ -123,7 +132,7 @@ export default function SpinWheelPage() {
 
       ctx.beginPath();
       ctx.moveTo(center, center);
-      ctx.arc(center, center, radius, startAngle, endAngle);
+      ctx.arc(center, center, radius, segStart, segEnd);
       ctx.closePath();
       ctx.fillStyle = grad;
       ctx.fill();
@@ -133,16 +142,18 @@ export default function SpinWheelPage() {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Text with shadow
+      // Text with shadow — rotate to segment center
       ctx.save();
       ctx.translate(center, center);
-      ctx.rotate(startAngle + segmentAngle / 2);
+      ctx.rotate(segStart + angles[i] / 2);
       ctx.textAlign = "right";
       ctx.fillStyle = "white";
       ctx.shadowColor = "rgba(0,0,0,0.5)";
       ctx.shadowBlur = 4;
       ctx.shadowOffsetY = 1;
-      ctx.font = "bold 14px system-ui, sans-serif";
+      // Smaller font for narrow segments
+      const fontSize = angles[i] < 0.3 ? 11 : 14;
+      ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
       const text = rewards[i].name.length > 16
         ? rewards[i].name.slice(0, 14) + "..."
         : rewards[i].name;
@@ -192,12 +203,20 @@ export default function SpinWheelPage() {
   }, [drawWheel, loading, rewards]);
 
   function animateToReward(rewardIndex: number) {
-    const segmentAngle = (2 * Math.PI) / rewards.length;
-    // Target: the reward segment should be at the top (pointer)
-    // We want the center of the segment to be at -PI/2 (top)
-    // rotation + rewardIndex * segmentAngle + segmentAngle/2 - PI/2 = -PI/2
-    // rotation = -rewardIndex * segmentAngle - segmentAngle/2
-    const targetRotation = -(rewardIndex * segmentAngle + segmentAngle / 2);
+    // Probability-based segment angles
+    const totalProb = rewards.reduce((sum, r) => sum + r.probability, 0);
+    const angles = rewards.map((r) => (r.probability / totalProb) * 2 * Math.PI);
+    // Cumulative start angles
+    const startAngles: number[] = [];
+    let cum = 0;
+    for (const a of angles) {
+      startAngles.push(cum);
+      cum += a;
+    }
+    // Target: the reward segment center should be at the top (pointer at -PI/2)
+    // rotation + startAngles[rewardIndex] + angles[rewardIndex]/2 - PI/2 = -PI/2
+    // rotation = -startAngles[rewardIndex] - angles[rewardIndex]/2
+    const targetRotation = -(startAngles[rewardIndex] + angles[rewardIndex] / 2);
     // Add extra full rotations for effect
     const fullRotations = 5;
     const finalRotation = targetRotation + fullRotations * 2 * Math.PI;

@@ -142,6 +142,18 @@ export async function createReward(
   const prob = Math.min(Math.max(probability, 0), 100);
 
   const supabase = createAdminClient();
+
+  // Check total probability of existing active rewards + new reward
+  const { data: existing } = await supabase
+    .from("rewards")
+    .select("probability")
+    .eq("active", true);
+  const currentTotal = (existing ?? []).reduce((sum, r) => sum + Number(r.probability), 0);
+  const newTotal = currentTotal + prob;
+  if (newTotal > 100) {
+    return { ok: false, error: `Total probability would be ${newTotal}%. Maximum is 100%. Current active total: ${currentTotal}%.` };
+  }
+
   const { data, error } = await supabase
     .from("rewards")
     .insert({ name: name.trim(), probability: prob })
@@ -167,6 +179,22 @@ export async function updateReward(
   if (updates.name !== undefined) patch.name = updates.name.trim();
   if (updates.probability !== undefined) patch.probability = Math.min(Math.max(updates.probability, 0), 100);
   if (updates.active !== undefined) patch.active = updates.active;
+
+  // If probability or active is changing, validate total doesn't exceed 100%
+  if (updates.probability !== undefined || updates.active !== undefined) {
+    const { data: all } = await supabase
+      .from("rewards")
+      .select("id, probability, active")
+      .eq("active", true);
+    const others = (all ?? []).filter((r) => r.id !== id);
+    const othersTotal = others.reduce((sum, r) => sum + Number(r.probability), 0);
+    const newProb = updates.probability !== undefined ? Math.min(Math.max(updates.probability, 0), 100) : 0;
+    const willBeActive = updates.active !== undefined ? updates.active : true;
+    const newTotal = othersTotal + (willBeActive ? newProb : 0);
+    if (newTotal > 100) {
+      return { ok: false, error: `Total probability would be ${newTotal}%. Maximum is 100%. Other active rewards total: ${othersTotal}%.` };
+    }
+  }
 
   const { error } = await supabase.from("rewards").update(patch).eq("id", id);
 

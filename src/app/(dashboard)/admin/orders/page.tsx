@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { LayoutGrid } from "lucide-react";
+import Link from "next/link";
+import { LayoutGrid, Plus } from "lucide-react";
 import { getTablesForOrdersGrid, type TableWithOrder } from "@/actions/orders";
 import { createClient } from "@/lib/supabase/client";
 import { playOrderSound } from "@/lib/sound";
 import { TableCard3D } from "@/components/dashboard/table-card-3d";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export default function OrdersPage() {
@@ -67,16 +69,23 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
-          <LayoutGrid className="size-6 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
+            <LayoutGrid className="size-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Tables</h1>
+            <p className="text-xs text-muted-foreground">
+              {tables.length} table{tables.length !== 1 ? "s" : ""} · {activeCount} active order{activeCount !== 1 ? "s" : ""}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Tables</h1>
-          <p className="text-xs text-muted-foreground">
-            {tables.length} table{tables.length !== 1 ? "s" : ""} · {activeCount} active order{activeCount !== 1 ? "s" : ""}
-          </p>
-        </div>
+        <Button size="sm" className="h-8" asChild>
+          <Link href="/admin/orders/new">
+            <Plus className="size-4 mr-1" /> Create Order
+          </Link>
+        </Button>
       </div>
 
       {/* Grid */}

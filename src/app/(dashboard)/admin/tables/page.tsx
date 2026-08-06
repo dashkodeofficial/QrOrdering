@@ -30,6 +30,7 @@ export default function AdminTablesPage() {
   const [tables, setTables] = useState<
     (RestaurantTable & { qr_token?: QrToken })[]
   >([]);
+  const [activeOrderTableIds, setActiveOrderTableIds] = useState<Set<string>>(new Set());
   const [showNew, setShowNew] = useState(false);
   const [qrPreview, setQrPreview] = useState<{
     tableName: string;
@@ -46,26 +47,29 @@ export default function AdminTablesPage() {
 
   const refresh = useCallback(async () => {
     const supabase = createClient();
-    const [tablesRes, tokensRes, settingsRes] = await Promise.all([
+    const [tablesRes, tokensRes, settingsRes, ordersRes] = await Promise.all([
       supabase.from("tables").select("*").order("name"),
       supabase.from("qr_tokens").select("*").is("revoked_at", null),
       supabase.from("restaurant_settings").select("name").single(),
+      supabase.from("orders").select("table_id").eq("status", "PLACED"),
     ]);
     const tMap = new Map(tokensRes.data?.map((t) => [t.table_id, t]));
     setTables(
       (tablesRes.data ?? []).map((t) => ({ ...t, qr_token: tMap.get(t.id) })),
     );
     if (settingsRes.data?.name) setRestaurantName(settingsRes.data.name);
+    setActiveOrderTableIds(new Set((ordersRes.data ?? []).map((o) => o.table_id)));
   }, []);
 
   useEffect(() => {
     let active = true;
     (async () => {
       const supabase = createClient();
-      const [tablesRes, tokensRes, settingsRes] = await Promise.all([
+      const [tablesRes, tokensRes, settingsRes, ordersRes] = await Promise.all([
         supabase.from("tables").select("*").order("name"),
         supabase.from("qr_tokens").select("*").is("revoked_at", null),
         supabase.from("restaurant_settings").select("name").single(),
+        supabase.from("orders").select("table_id").eq("status", "PLACED"),
       ]);
       if (!active) return;
       const tMap = new Map(tokensRes.data?.map((t) => [t.table_id, t]));
@@ -73,6 +77,7 @@ export default function AdminTablesPage() {
         (tablesRes.data ?? []).map((t) => ({ ...t, qr_token: tMap.get(t.id) })),
       );
       if (settingsRes.data?.name) setRestaurantName(settingsRes.data.name);
+      setActiveOrderTableIds(new Set((ordersRes.data ?? []).map((o) => o.table_id)));
     })();
     return () => { active = false; };
   }, []);
@@ -279,7 +284,7 @@ export default function AdminTablesPage() {
               >
                 <Printer className="size-3.5 mr-1" /> Print
               </Button>
-              {(table.status === "OCCUPIED" || table.status === "BILL_REQUESTED") && (
+              {(table.status === "OCCUPIED" || table.status === "BILL_REQUESTED") && !activeOrderTableIds.has(table.id) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -300,6 +305,9 @@ export default function AdminTablesPage() {
                 >
                   <CheckCircle2 className="size-3.5 mr-1" /> Available
                 </Button>
+              )}
+              {activeOrderTableIds.has(table.id) && (
+                <span className="text-xs font-semibold text-primary">Active Order</span>
               )}
               <Button
                 variant="ghost"

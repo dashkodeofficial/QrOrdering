@@ -289,6 +289,13 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
 
   // Auto-available: if all orders for this session are now CANCELLED,
   // set the table to AVAILABLE and close the session.
+  if (!order.table_session_id) {
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/tables");
+    return { ok: true, data: undefined };
+  }
+
   const { data: remaining } = await supabase
     .from("orders")
     .select("id, status")
@@ -297,14 +304,14 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
 
   if (!remaining || remaining.length === 0) {
     const now = new Date().toISOString();
-    await Promise.all([
-      supabase.from("tables").update({ status: "AVAILABLE" }).eq("id", order.table_id),
-      supabase
-        .from("table_sessions")
-        .update({ status: "COMPLETED", ended_at: now })
-        .eq("id", order.table_session_id)
-        .is("ended_at", null),
-    ]);
+    if (order.table_id) {
+      await supabase.from("tables").update({ status: "AVAILABLE" }).eq("id", order.table_id);
+    }
+    await supabase
+      .from("table_sessions")
+      .update({ status: "COMPLETED", ended_at: now })
+      .eq("id", order.table_session_id)
+      .is("ended_at", null);
   }
 
   revalidatePath(`/orders/${orderId}`);
@@ -316,8 +323,8 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
 
 export interface OrderHistoryItem {
   id: string;
-  table_id: string;
-  table_session_id: string;
+  table_id: string | null;
+  table_session_id: string | null;
   status: OrderStatus;
   total_cents: number;
   notes: string | null;
@@ -508,13 +515,14 @@ export interface AdminOrderItem {
 export interface AdminOrderDetails {
   id: string;
   status: OrderStatus;
+  order_type: string;
   total_cents: number;
   notes: string | null;
   created_at: string;
   updated_at: string;
-  table_id: string;
+  table_id: string | null;
   table_name: string | null;
-  table_session_id: string;
+  table_session_id: string | null;
   items: AdminOrderItem[];
   taxRatePercent: number;
   serviceChargeCents: number;
@@ -566,6 +574,7 @@ export async function getAdminOrderDetails(
     data: {
       id: orderRes.data.id,
       status: orderRes.data.status as OrderStatus,
+      order_type: (orderRes.data as { order_type?: string }).order_type ?? "DINE_IN",
       total_cents: orderRes.data.total_cents,
       notes: orderRes.data.notes,
       created_at: orderRes.data.created_at,
@@ -665,7 +674,7 @@ export async function markBillPaid(orderId: string): Promise<ActionResult> {
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, table_id, table_session_id")
+    .select("id, table_id, table_session_id, order_type")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -673,23 +682,28 @@ export async function markBillPaid(orderId: string): Promise<ActionResult> {
 
   const now = new Date().toISOString();
 
-  await Promise.all([
-    // Set table to AVAILABLE
-    supabase.from("tables").update({ status: "AVAILABLE" }).eq("id", order.table_id),
-    // Close the session
-    supabase
+  // Update order status to COMPLETED
+  await supabase.from("orders").update({ status: "COMPLETED", updated_at: now }).eq("id", orderId);
+
+  // Only update table/session for dine-in orders
+  if (order.table_id) {
+    await supabase.from("tables").update({ status: "AVAILABLE" }).eq("id", order.table_id);
+  }
+  if (order.table_session_id) {
+    await supabase
       .from("table_sessions")
       .update({ status: "COMPLETED", ended_at: now })
       .eq("id", order.table_session_id)
-      .is("ended_at", null),
-    // Resolve any pending REQUEST_BILL waiter requests for this table
-    supabase
+      .is("ended_at", null);
+  }
+  if (order.table_id) {
+    await supabase
       .from("waiter_requests")
       .update({ status: "RESOLVED", resolved_at: now })
       .eq("table_id", order.table_id)
       .eq("type", "REQUEST_BILL")
-      .neq("status", "RESOLVED"),
-  ]);
+      .neq("status", "RESOLVED");
+  }
 
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
@@ -760,4 +774,164 @@ export async function getTablesForOrdersGrid(): Promise<ActionResult<TableWithOr
   });
 
   return { ok: true, data: tables };
+}
+
+/* ====================================================================== */
+/* Takeaway / Delivery order creation                                      */
+/* ====================================================================== */
+
+export async function createTakeawayOrder(
+  raw: unknown,
+): Promise<ActionResult<{ orderId: string }>> {
+  const auth = await requireCapability("orders.manage");
+  if (!auth.ok) return auth;
+
+  const parsed = placeOrderSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid order" };
+  }
+
+  const supabase = createAdminClient();
+
+  // Re-fetch live menu rows for every item — use server prices/availability
+  const itemIds = parsed.data.items.map((i) => i.menu_item_id);
+  const { data: liveItems, error: fetchErr } = await supabase
+    .from("menu_items")
+    .select("id, name, price_cents, available")
+    .in("id", itemIds);
+
+  if (fetchErr) return { ok: false, error: "Could not verify menu items." };
+
+  const liveById = new Map(liveItems.map((m) => [m.id, m]));
+  const orderItems: {
+    menu_item_id: string;
+    name: string;
+    unit_price_cents: number;
+    quantity: number;
+    notes: string | null;
+  }[] = [];
+
+  for (const line of parsed.data.items) {
+    const live = liveById.get(line.menu_item_id);
+    if (!live) {
+      return { ok: false, error: `"${line.name}" is no longer on the menu.` };
+    }
+    if (!live.available) {
+      return { ok: false, error: `Sorry, "${live.name}" is no longer available.` };
+    }
+    orderItems.push({
+      menu_item_id: live.id,
+      name: live.name,
+      unit_price_cents: live.price_cents,
+      quantity: line.quantity,
+      notes: line.notes?.trim() ? line.notes.trim() : null,
+    });
+  }
+
+  // Server-side subtotal + grand total
+  const subtotalCents = sumCartTotal(orderItems);
+  const { tax_rate_percent: taxRate, service_charge_amount: serviceCharge } = await getPublicSettings();
+  const taxCents = Math.round(subtotalCents * taxRate / 100);
+  const totalCents = subtotalCents + taxCents + serviceCharge;
+
+  // Insert order with null table_id/session_id and order_type TAKEAWAY
+  const { data: order, error: orderErr } = await supabase
+    .from("orders")
+    .insert({
+      table_id: null,
+      table_session_id: null,
+      status: "PLACED",
+      order_type: "TAKEAWAY",
+      total_cents: totalCents,
+      notes: parsed.data.notes?.trim() || null,
+    })
+    .select("id")
+    .single();
+
+  if (orderErr || !order) {
+    return { ok: false, error: "Could not place the order. Please try again." };
+  }
+
+  const { error: itemsErr } = await supabase.from("order_items").insert(
+    orderItems.map((i) => ({ ...i, order_id: order.id })),
+  );
+
+  if (itemsErr) {
+    await supabase.from("orders").delete().eq("id", order.id);
+    return { ok: false, error: "Could not save order items. Please try again." };
+  }
+
+  await logActivity("order.create_takeaway", {}, order.id);
+
+  revalidatePath(`/admin/orders/${order.id}`);
+  revalidatePath("/admin/orders");
+
+  return { ok: true, data: { orderId: order.id } };
+}
+
+/* ====================================================================== */
+/* Order search by Order ID prefix                                         */
+/* ====================================================================== */
+
+export async function searchOrders(
+  query: string,
+  statusFilter: string,
+): Promise<ActionResult<OrderHistoryItem[]>> {
+  const auth = await requireCapability("orders.manage");
+  if (!auth.ok) return auth;
+
+  const trimmed = query.trim().toLowerCase();
+  if (trimmed.length < 1) {
+    return { ok: true, data: [] };
+  }
+
+  const supabase = createAdminClient();
+
+  // Fetch recent orders and filter by ID prefix client-side.
+  // PostgREST doesn't support ::text casts in .filter(), so we fetch a
+  // broad set and filter in JS — reliable and fast for typical order volumes.
+  let queryBuilder = supabase
+    .from("orders")
+    .select("*, tables(name)")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (statusFilter && statusFilter !== "ALL") {
+    queryBuilder = queryBuilder.eq("status", statusFilter);
+  }
+
+  const { data, error } = await queryBuilder;
+
+  if (error) return { ok: false, error: "Search failed." };
+
+  // Filter by ID prefix client-side
+  const filtered = (data ?? []).filter((o) =>
+    o.id.toLowerCase().startsWith(trimmed),
+  );
+
+  const orderIds = filtered.map((o) => o.id);
+  const { data: itemsData } = await supabase
+    .from("order_items")
+    .select("order_id")
+    .in("order_id", orderIds);
+
+  const itemCountMap = new Map<string, number>();
+  for (const item of itemsData ?? []) {
+    itemCountMap.set(item.order_id, (itemCountMap.get(item.order_id) ?? 0) + 1);
+  }
+
+  const orders: OrderHistoryItem[] = filtered.map((o) => ({
+    id: o.id,
+    table_id: o.table_id,
+    table_session_id: o.table_session_id,
+    status: o.status as OrderStatus,
+    total_cents: o.total_cents,
+    notes: o.notes,
+    created_at: o.created_at,
+    updated_at: o.updated_at,
+    table_name: (o as { tables?: { name?: string } | null }).tables?.name ?? null,
+    item_count: itemCountMap.get(o.id) ?? 0,
+  }));
+
+  return { ok: true, data: orders };
 }

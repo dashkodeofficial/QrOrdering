@@ -100,11 +100,16 @@ export default function VoucherSettingsPage() {
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   }, [filtered]);
 
-  const counts = useMemo(() => ({
-    active: vouchers.filter((v) => getVoucherStatus(v) === "active").length,
-    expired: vouchers.filter((v) => getVoucherStatus(v) === "expired").length,
-    used: vouchers.filter((v) => getVoucherStatus(v) === "used").length,
-  }), [vouchers]);
+  const counts = useMemo(() => {
+    let active = 0, expired = 0, used = 0;
+    for (const v of vouchers) {
+      const s = getVoucherStatus(v);
+      if (s === "active") active++;
+      else if (s === "expired") expired++;
+      else used++;
+    }
+    return { active, expired, used };
+  }, [vouchers]);
 
   const TABS: { value: TabFilter; label: string; count: number }[] = [
     { value: "active", label: "Active", count: counts.active },
@@ -118,55 +123,97 @@ export default function VoucherSettingsPage() {
       return;
     }
 
-    const voucherHTML = batchVouchers.map((v) => {
-      const status = getVoucherStatus(v);
-      const expiryDate = new Date(v.expires_at).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
-      return `
-        <div class="voucher">
-          <div class="voucher-header">
-            <div class="voucher-icon">🎟</div>
-            <div class="voucher-title">${restaurantName} Voucher</div>
-          </div>
-          <div class="voucher-code">${v.code}</div>
-          <div class="voucher-info">
-            <span>Expires: ${expiryDate}</span>
-            <span class="voucher-status status-${status}">${status}</span>
-          </div>
-        </div>
-      `;
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const dashed = '<div class="dashed">----------------------------------------------</div>';
+
+    const voucherHTML = batchVouchers.map((v, i) => {
+      const expiryDate = new Date(v.expires_at).toLocaleDateString("en-PK", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      const isLast = i === batchVouchers.length - 1;
+      return `<div class="voucher${isLast ? " last" : ""}">
+  <div class="center">
+    <div class="restaurant-name">${esc(restaurantName)}</div>
+    <div class="voucher-label">SPIN & WIN VOUCHER</div>
+  </div>
+  ${dashed}
+  <div class="code">${esc(v.code)}</div>
+  ${dashed}
+  <div class="meta">
+    <div class="meta-row"><span>Expires</span><span>${expiryDate}</span></div>
+    <div class="meta-row"><span>Type</span><span>${v.expiry_type.charAt(0) + v.expiry_type.slice(1).toLowerCase()}</span></div>
+  </div>
+  ${dashed}
+  <div class="center footer">Present this code at the Spin & Win wheel</div>
+</div>`;
     }).join("");
 
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open("", "_blank", "width=400,height=600");
     if (!printWindow) {
       toast.error("Please allow popups to print vouchers.");
       return;
     }
     printWindow.document.open();
-    printWindow.document.write("<!DOCTYPE html>");
-    printWindow.document.write("<html><head><title>Vouchers - Print</title>");
-    printWindow.document.write("<style>");
-    printWindow.document.write("* { margin: 0; padding: 0; box-sizing: border-box; }");
-    printWindow.document.write("body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 20px; }");
-    printWindow.document.write(".grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 800px; margin: 0 auto; }");
-    printWindow.document.write(".voucher { background: white; border-radius: 12px; border: 2px dashed #ddd; padding: 20px; position: relative; overflow: hidden; }");
-    printWindow.document.write(".voucher::before, .voucher::after { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: #f5f5f5; top: 50%; transform: translateY(-50%); }");
-    printWindow.document.write(".voucher::before { left: -10px; }");
-    printWindow.document.write(".voucher::after { right: -10px; }");
-    printWindow.document.write(".voucher-header { display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px dashed #eee; }");
-    printWindow.document.write(".voucher-icon { width: 28px; height: 28px; border-radius: 8px; background: #e23744; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; }");
-    printWindow.document.write(".voucher-title { font-size: 12px; font-weight: 700; color: #e23744; text-transform: uppercase; letter-spacing: 1px; }");
-    printWindow.document.write(".voucher-code { font-family: 'Courier New', monospace; font-size: 28px; font-weight: 800; letter-spacing: 4px; text-align: center; padding: 16px 0; color: #1a1a1a; }");
-    printWindow.document.write(".voucher-info { display: flex; justify-content: space-between; font-size: 11px; color: #666; padding-top: 12px; border-top: 1px dashed #eee; }");
-    printWindow.document.write(".voucher-status { font-size: 10px; font-weight: 600; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; }");
-    printWindow.document.write(".status-active { background: #d1fae5; color: #065f46; }");
-    printWindow.document.write(".status-used { background: #dbeafe; color: #1e40af; }");
-    printWindow.document.write(".status-expired { background: #fee2e2; color: #991b1b; }");
-    printWindow.document.write("@media print { body { background: white; padding: 0; } .voucher { break-inside: avoid; } }");
-    printWindow.document.write("</style></head><body>");
-    printWindow.document.write('<div class="grid">' + voucherHTML + '</div>');
-    printWindow.document.write("</body></html>");
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vouchers - Print</title>
+<style>
+  @page { margin: 0; size: 80mm auto; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Courier New", "Consolas", monospace;
+    font-size: 12px;
+    color: #000;
+    background: #fff;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .voucher {
+    width: 80mm;
+    max-width: 80mm;
+    padding: 4mm 3mm;
+    margin: 0 auto;
+    page-break-after: always;
+    break-after: page;
+  }
+  .voucher.last { page-break-after: auto; break-after: auto; }
+  .center { text-align: center; }
+  .restaurant-name { font-size: 16px; font-weight: bold; }
+  .voucher-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  .dashed { text-align: center; font-size: 11px; letter-spacing: -1px; margin: 4px 0; }
+  .code {
+    font-family: "Courier New", monospace;
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-align: center;
+    padding: 8px 0;
+  }
+  .meta { font-size: 11px; }
+  .meta-row { display: flex; justify-content: space-between; }
+  .footer { font-size: 11px; }
+  @media print {
+    body { width: 80mm; }
+    .voucher { width: 80mm; padding: 2mm 2mm; }
+  }
+</style>
+</head>
+<body>
+${voucherHTML}
+</body>
+</html>`);
     printWindow.document.close();
-    setTimeout(() => printWindow.print(), 500);
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 300);
   }
 
   function downloadVoucherPNG(voucher: Voucher) {

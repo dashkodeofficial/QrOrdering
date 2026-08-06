@@ -14,7 +14,7 @@ export async function downloadInvoicePDF(
 ): Promise<void> {
   const iframe = document.createElement("iframe");
   iframe.style.cssText =
-    "position:fixed;left:-9999px;top:0;width:302px;height:900px;border:none;visibility:hidden;";
+    "position:fixed;left:-9999px;top:0;width:302px;height:400px;border:none;visibility:hidden;";
   document.body.appendChild(iframe);
 
   try {
@@ -23,35 +23,27 @@ export async function downloadInvoicePDF(
     iframeDoc.write(htmlContent);
     iframeDoc.close();
 
+    // Wait for content to render, then shrink iframe to actual content height
     await new Promise<void>((resolve) => setTimeout(resolve, 150));
+    const contentHeight = iframeDoc.body.scrollHeight;
+    iframe.style.height = contentHeight + "px";
 
     const canvas = await html2canvas(iframeDoc.body, {
       scale: 2,
       useCORS: true,
       backgroundColor: "#ffffff",
       windowWidth: 302,
+      height: contentHeight,
     });
 
     const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
 
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
+    // Use 80mm-wide PDF (matching receipt width) with height = content height
+    const pdfWidth = 80; // mm
     const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+    const pdf = new jsPDF("p", "mm", [pdfWidth, imgHeight]);
 
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-    heightLeft -= pdfHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
-    }
-
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeight);
     pdf.save(filename);
   } finally {
     document.body.removeChild(iframe);

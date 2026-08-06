@@ -77,7 +77,6 @@ export default async function AdminPage() {
   const navCards = [
     { href: "/admin/menu", label: "Menu", description: "Categories & items", icon: UtensilsCrossed, accent: "from-orange-500/10 to-red-500/10" },
     { href: "/admin/tables", label: "Tables", description: "QR codes & status", icon: LayoutGrid, accent: "from-amber-500/10 to-yellow-500/10" },
-    { href: "/admin/staff", label: "Staff", description: "Roles & permissions", icon: Users, accent: "from-blue-500/10 to-indigo-500/10" },
     { href: "/admin/reports", label: "Reports", description: "Sales & insights", icon: BarChart3, accent: "from-purple-500/10 to-pink-500/10" },
     { href: "/admin/settings", label: "Settings", description: "Restaurant config", icon: Settings, accent: "from-slate-500/10 to-gray-500/10" },
     { href: "/admin/activity", label: "Activity", description: "Staff audit log", icon: Activity, accent: "from-cyan-500/10 to-sky-500/10" },

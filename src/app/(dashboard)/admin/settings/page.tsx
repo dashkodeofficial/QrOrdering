@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { Settings, Save, Eye, EyeOff, User, Upload, ImageIcon } from "lucide-react";
+import { Settings, Save, Eye, EyeOff, User, Upload, ImageIcon, Store } from "lucide-react";
 import { getSettings, updateSettings, getCurrentAdmin, updateAdminProfile, uploadFavicon } from "@/actions/settings";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { RestaurantSettings } from "@/lib/types/db";
 
 export default function SettingsPage() {
@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [primaryColor, setPrimaryColor] = useState("#e23744");
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"restaurant" | "admin">("restaurant");
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -64,8 +65,8 @@ export default function SettingsPage() {
       tax_rate_percent: fd.get("tax_rate_percent"),
       service_charge_amount: fd.get("service_charge_amount"),
       receipt_footer: fd.get("receipt_footer"),
-      primary_color: primaryColor,
-      favicon_url: faviconUrl,
+      primary_color: primaryColor || undefined,
+      favicon_url: faviconUrl ?? undefined,
     });
     toast[res.ok ? "success" : "error"](res.ok ? "Settings saved" : res.error);
     if (res.ok) router.refresh();
@@ -104,22 +105,47 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex items-center gap-2">
-        <Settings className="size-6 text-primary" />
-        <h1 className="text-xl font-bold text-app-ink">Restaurant Settings</h1>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10">
+          <Settings className="size-6 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Settings</h1>
+          <p className="text-xs text-muted-foreground">Manage restaurant and admin preferences</p>
+        </div>
       </div>
 
-      <Tabs defaultValue="restaurant">
-        <TabsList className="h-9">
-          <TabsTrigger value="restaurant" className="h-9">
-            Restaurant
-          </TabsTrigger>
-          <TabsTrigger value="admin" className="h-9">
-            Admin Settings
-          </TabsTrigger>
-        </TabsList>
+      {/* Tab buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setActiveSettingsTab("restaurant")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all",
+            activeSettingsTab === "restaurant"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-muted/50 text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <Store className="size-4" />
+          Restaurant
+        </button>
+        <button
+          onClick={() => setActiveSettingsTab("admin")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all",
+            activeSettingsTab === "admin"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-muted/50 text-muted-foreground hover:bg-muted",
+          )}
+        >
+          <User className="size-4" />
+          Admin Settings
+        </button>
+      </div>
 
-        <TabsContent value="restaurant" className="space-y-6 pt-4">
+      {activeSettingsTab === "restaurant" && (
+        <div className="space-y-6 pt-2">
           <form onSubmit={handleSubmit} className="space-y-6">
             <Card>
               <CardHeader>
@@ -308,9 +334,11 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="admin" className="space-y-6 pt-4">
+      {activeSettingsTab === "admin" && (
+        <div className="space-y-6 pt-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -378,8 +406,8 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }
