@@ -21,8 +21,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const faviconUrl = settings.favicon_url ?? "/favicon.svg";
   return {
     title: {
-      default: "QR Dining",
-      template: "%s · QR Dining",
+      default: "Tofu Dining",
+      template: "%s · Tofu Dining",
     },
     description: "Scan, browse, order — a modern restaurant QR dining system.",
     icons: {

@@ -70,7 +70,7 @@ export const CustomerTopNav = memo(function CustomerTopNav() {
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
             <ChefHat className="size-5 text-primary-foreground" />
           </div>
-          <span className="text-base font-bold text-app-ink">QR Dining</span>
+          <span className="text-base font-bold text-app-ink">Tofu Dining</span>
         </Link>
         <nav className="flex items-center gap-1">
           {LINKS.map((l) => {

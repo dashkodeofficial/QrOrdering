@@ -148,7 +148,7 @@ function SidebarContent({
               <ChefHat className="size-5" />
             </div>
             <div className="leading-none">
-              <p className="text-sm font-bold text-sidebar-foreground">QR Dining</p>
+              <p className="text-sm font-bold text-sidebar-foreground">Tofu Dining</p>
               <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider">{ROLE_LABEL[role]}</p>
             </div>
           </div>
@@ -269,7 +269,7 @@ export function DashboardSidebar({ role, fullName }: SidebarProps) {
             <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <ChefHat className="size-4" />
             </div>
-            <span className="text-sm font-semibold">QR Dining</span>
+            <span className="text-sm font-semibold">Tofu Dining</span>
           </div>
         </div>
         <Badge variant="outline" className="text-xs">{ROLE_LABEL[role]}</Badge>
